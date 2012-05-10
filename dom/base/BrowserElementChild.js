@@ -10,7 +10,7 @@ let Cc = Components.classes;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
 function debug(msg) {
-  //dump("BrowserElementChild - " + msg + "\n");
+  dump("BrowserElementChild - " + msg + "\n");
 }
 
 function sendAsyncMsg(msg, data) {
@@ -78,6 +78,9 @@ BrowserElementChild.prototype = {
 
     addMessageListener("browser-element-api:get-screenshot",
                        this._recvGetScreenshot.bind(this));
+
+    addMessageListener("browser-element-api:set-active",
+                       this._recvSetActive.bind(this));
   },
 
   _titleChangedHandler: function(e) {
@@ -126,6 +129,16 @@ BrowserElementChild.prototype = {
     sendAsyncMsg('got-screenshot', {
       id: data.json.id,
       screenshot: canvas.toDataURL("image/png")
+    });
+  },
+
+  _recvSetActive: function(data) {
+    if (docShell.isActive !== data.json.active) {
+      docShell.isActive = data.json.active;
+    }
+    sendAsyncMsg('got-setactive', {
+      id: data.json.id,
+      active: data.json.active
     });
   },
 

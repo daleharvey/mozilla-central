@@ -15,7 +15,7 @@ const NS_PREFBRANCH_PREFCHANGE_TOPIC_ID = "nsPref:changed";
 const BROWSER_FRAMES_ENABLED_PREF = "dom.mozBrowserFramesEnabled";
 
 function debug(msg) {
-  //dump("BrowserElementParent - " + msg + "\n");
+  dump("BrowserElementParent - " + msg + "\n");
 }
 
 /**
@@ -56,6 +56,9 @@ BrowserElementParent.prototype = {
 
     this._screenshotListeners = {};
     this._screenshotReqCounter = 0;
+
+    this._setActiveListeners = {};
+    this._setActiveCounter = 0;
 
     var os = Cc["@mozilla.org/observer-service;1"].getService(Ci.nsIObserverService);
     os.addObserver(this, 'remote-browser-frame-shown', /* ownsWeak = */ true);
@@ -108,9 +111,14 @@ BrowserElementParent.prototype = {
     addMessageListener("get-mozapp-manifest-url", this._sendMozAppManifestURL);
     mm.addMessageListener('browser-element-api:got-screenshot',
                           this._recvGotScreenshot.bind(this));
+    mm.addMessageListener('browser-element-api:got-setactive',
+                          this._recvGotSetActive.bind(this));
 
     XPCNativeWrapper.unwrap(frameElement).getScreenshot =
       this._getScreenshot.bind(this, mm, frameElement);
+
+    XPCNativeWrapper.unwrap(frameElement).setActive =
+      this._setActive.bind(this, mm, frameElement);
 
     mm.loadFrameScript("chrome://global/content/BrowserElementChild.js",
                        /* allowDelayedLoad = */ true);
@@ -162,6 +170,23 @@ BrowserElementParent.prototype = {
     this._screenshotListeners[id] = req;
     mm.sendAsyncMessage('browser-element-api:get-screenshot', {id: id});
     return req;
+  },
+
+  _setActive: function(mm, frameElement, active) {
+    let id = 'req_' + this._setActiveCounter++;
+    let req = Services.DOMRequest.createRequest(frameElement.ownerDocument.defaultView);
+    this._setActiveListeners[id] = req;
+    mm.sendAsyncMessage('browser-element-api:set-active', {
+      active: active,
+      id: id
+    });
+    return req;
+  },
+
+  _recvGotSetActive: function(data) {
+    var req = this._setActiveListeners[data.json.id];
+    delete this._setActiveListeners[data.json.id];
+    Services.DOMRequest.fireSuccess(req, data.json.active);
   },
 
   observe: function(subject, topic, data) {
