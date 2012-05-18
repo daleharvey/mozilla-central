@@ -76,6 +76,11 @@ BrowserElementChild.prototype = {
                      /* useCapture = */ true,
                      /* wantsUntrusted = */ false);
 
+    addEventListener('contextmenu',
+                     function() { debug('!! contextmenu captured') },
+                     /* useCapture = */ true,
+                     /* wantsUntrusted = */ false);
+
     addMessageListener("browser-element-api:get-screenshot",
                        this._recvGetScreenshot.bind(this));
 

@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html>
+<!--
+https://bugzilla.mozilla.org/show_bug.cgi?id=753595
+-->
+ <head>
+  <title>Test for Bug 753595</title>
+  <script type="application/javascript" src="/tests/SimpleTest/SimpleTest.js"></script>
+  <script type="application/javascript" src="browserFrameHelpers.js"></script>
+  <link rel="stylesheet" type="text/css" href="/tests/SimpleTest/test.css"/>
+</head>
+<body>
+<a target="_blank" href="https://bugzilla.mozilla.org/show_bug.cgi?id=753595">Mozilla Bug 753595</a>
+
+<!--
+   Test the getScreenshot property for mozbrowser
+-->
+
+<script type="application/javascript;version=1.7">
+
+SimpleTest.waitForExplicitFinish();
+
+var iframeScript = function() {
+  var ev = content.document.createEvent('HTMLEvents');
+  ev.initEvent('contextmenu', true, false);
+  content.document.body.dispatchEvent(ev);
+}
+
+function runTest() {
+
+  browserFrameHelpers.setEnabledPref(true);
+  browserFrameHelpers.addToWhitelist();
+
+  var iframe1 = document.createElement('iframe');
+  iframe1.mozbrowser = true;
+  iframe1.src = 'data:text/html,<html>' +
+    '<body contextmenu="mymenu">hello' +
+    '<menu type="context" id="mymenu">' +
+      '<menuitem label="Refresh"></menuitem>'
+      '<menuitem label="Share"></menuitem>'
+    '</menu></body></html>';
+
+  document.body.appendChild(iframe1);
+
+  function handleContextMenu(e) {
+
+    var items = e.data.items;
+
+    // Items looks kinda like this, but will need to be a nested object
+    // items = [{label: 'run myfunction', onclick: 'myFunction()'},
+    //          {label: 'log stuff', onclick: 'console.log("stuff")'}];
+
+    var item = items[0]; // User picked first item
+
+    iframe1.applyCallback(item.onclick);
+  }
+
+  function iframeLoaded() {
+    var mm = SpecialPowers.getBrowserFrameMessageManager(iframe1);
+    mm.loadFrameScript('data:,(' + iframeScript.toString() + ')();', false);
+  }
+
+  iframe1.addEventListener('contextmenu', handleContextMenu);
+  iframe1.addEventListener('mozbrowserloadend', iframeLoaded);
+}
+
+addEventListener('load', function() { SimpleTest.executeSoon(runTest); });
+
+</script>
+
+</body>
+</html>
